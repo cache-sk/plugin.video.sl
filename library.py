@@ -44,7 +44,7 @@ CATEGORIES = [
 def get_url(**kwargs):
     return '{0}?{1}'.format(_url, utils.urlencode(kwargs))
 
-def types():
+def types(sl):
     xbmcplugin.setPluginCategory(_handle, _addon.getLocalizedString(30800))
     for tp in TYPES:
         list_item = xbmcgui.ListItem(label=tp['msg'])
@@ -53,6 +53,7 @@ def types():
         is_folder = True
         xbmcplugin.addDirectoryItem(_handle, link, list_item, is_folder)
     xbmcplugin.endOfDirectory(_handle)
+    utils.call(sl, lambda: sl.newLibTest())
 
 def categories(sl, ctype):
     title = _addon.getLocalizedString(30800)
@@ -244,6 +245,6 @@ def router(args, sl):
         elif args['library'][0] == 'play':
             play(sl, args['lid'][0])
         else:
-            types()
+            types(sl)
     else:
         types()

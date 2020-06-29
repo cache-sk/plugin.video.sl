@@ -16,6 +16,7 @@ UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 #M7_DOMAIN = 'm7cz.solocoo.tv'
 #M7_API_WEB = 'https://' + M7_DOMAIN + "/"
 #M7_API_URL = M7_API_WEB + 'm7cziphone/'
+TVAPI_URL = 'https://tvapi.solocoo.tv/v1/'
 
 class SkylinkException(Exception):
     def __init__(self, id):
@@ -46,6 +47,8 @@ class SkylinkSessionData:
     uid = ''
     secret = ''
     id = ''
+    token = ''
+
 
     def is_valid(self):
         return (self.secret != '') and (self.id != '')
@@ -181,6 +184,15 @@ class Skylink:
     def reconnect(self, device):
         self._data.clear()
         self._auth(device)
+        
+    def _getTvapiToken(self):
+        res = self._get({'z': 'ssotoken'})
+        print res.content
+        data = res.json()
+        res = self._post({},json.dumps({'appVersion':'83.0','brand':self._provider,'deviceModel':'Chrome','deviceSerial':self._data.uid,'deviceType':'PC','memberId':'0','osVersion':"Windows 10",'sapiToken':data['ssotoken']}).encode(), True, 'session')
+        print res.content
+        data = res.json()
+        self._data.token = data['token']
 
     @staticmethod
     def _time():
@@ -189,19 +201,22 @@ class Skylink:
     def _request(self, method, url, **kwargs):
         return self._session.request(method, url, **kwargs)
 
-    def _get(self, params):
-        return self._request('GET', self._api_url + 'capi.aspx', params=params, allow_redirects=True, #M7_API_URL
-                             headers={'User-Agent': UA, 'Referer': self._url, 'Origin': self._url,
-                                      'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin',
-                                      'Accept': 'application/json, text/javascript, */*; q=0.01'})
+    def _get(self, params, tvapi = False, req = '', authorization = False):
+        headers={'User-Agent': UA, 'Referer': self._url, 'Origin': self._url,
+                 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin',
+                 'Accept': 'application/json, text/javascript, */*; q=0.01'}
+        if authorization:
+            headers['authorization'] = 'Bearer ' + self._data.token
+        return self._request('GET', TVAPI_URL + req if tvapi else self._api_url + 'capi.aspx', params=params, allow_redirects=True, headers=headers)
 
-    def _post(self, params, data):
-        return self._request('POST', self._api_url + 'capi.aspx', params=params, data=data, #M7_API_URL
-                             json=None,
-                             headers={'User-Agent': UA, 'Referer': self._url, 'Origin': self._url,
-                                      'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin',
-                                      'Accept': 'application/json, text/javascript, */*; q=0.01',
-                                      'X-Requested-With': 'XMLHttpRequest'})
+    def _post(self, params, data, tvapi = False, req = '', authorization = False):
+        headers={'User-Agent': UA, 'Referer': self._url, 'Origin': self._url,
+                 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin',
+                 'Accept': 'application/json, text/javascript, */*; q=0.01',
+                 'X-Requested-With': 'XMLHttpRequest'}
+        if authorization:
+            headers['authorization'] = 'Bearer ' + self._data.token
+        return self._request('POST', TVAPI_URL + req if tvapi else self._api_url + 'capi.aspx', params=params, data=data, json=None, headers=headers)
 
     def channels(self, replay=False):
         """Returns available live channels, when reply is set returns replayable channels as well
@@ -424,3 +439,9 @@ class Skylink:
         res = self._get({'z':'products'})
         data = res.json()
         return data
+
+    def newLibTest(self):
+        self._login()
+        self._getTvapiToken()
+        res = self._get({'group':'genre','sort':'newest'}, True, 'collections/movies', True)
+        print res.content
