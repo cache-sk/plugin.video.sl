@@ -15,6 +15,27 @@ _url = sys.argv[0]
 _handle = int(sys.argv[1])
 _addon = xbmcaddon.Addon()
 
+ROOT = [
+    {'msg':_addon.getLocalizedString(30851), 'code':'genre'},
+    {'msg':_addon.getLocalizedString(30852), 'code':'owner'},
+    {'msg':_addon.getLocalizedString(30850), 'code':'types'} #old api
+]
+
+def get_url(**kwargs):
+    return '{0}?{1}'.format(_url, utils.urlencode(kwargs))
+
+def root(sl):
+    xbmcplugin.setPluginCategory(_handle, _addon.getLocalizedString(30800))
+    for item in ROOT:
+        list_item = xbmcgui.ListItem(label=item['msg'])
+        list_item.setInfo('video', {'title': item['msg']})
+        link = get_url(library=item['code'])
+        is_folder = True
+        xbmcplugin.addDirectoryItem(_handle, link, list_item, is_folder)
+    xbmcplugin.endOfDirectory(_handle)
+
+#old api starts here
+
 TYPES = [
     {'msg':_addon.getLocalizedString(30801), 'code':'movies', 'isMovie':True, 'data':{'z':'movies4cat','cs':'37178378331', 'v':'4'}},
     {'msg':_addon.getLocalizedString(30802), 'code':'series', 'isMovie':False, 'data':{'z':'series4cat','cs': '1591', 'v':'4'}} #mask? 1 | 2 | 4 | 16 | 32 | 512 | 1024
@@ -41,9 +62,6 @@ CATEGORIES = [
     {'msg':_addon.getLocalizedString(30828), 'code':'Erotic', 'pin':True}
 ]
 
-def get_url(**kwargs):
-    return '{0}?{1}'.format(_url, utils.urlencode(kwargs))
-
 def types(sl):
     xbmcplugin.setPluginCategory(_handle, _addon.getLocalizedString(30800))
     for tp in TYPES:
@@ -53,7 +71,6 @@ def types(sl):
         is_folder = True
         xbmcplugin.addDirectoryItem(_handle, link, list_item, is_folder)
     xbmcplugin.endOfDirectory(_handle)
-    utils.call(sl, lambda: sl.newLibTest())
 
 def categories(sl, ctype):
     title = _addon.getLocalizedString(30800)
@@ -234,7 +251,9 @@ def play(sl, lid):
 
 def router(args, sl):
     if args:
-        if args['library'][0] == 'category':
+        if args['library'][0] == 'types':
+            types(sl)
+        elif args['library'][0] == 'category':
             categories(sl, args['ctype'][0])
         elif args['library'][0] == 'list':
             listOfItems(sl, args['ctype'][0], args['category'][0])
@@ -245,6 +264,6 @@ def router(args, sl):
         elif args['library'][0] == 'play':
             play(sl, args['lid'][0])
         else:
-            types(sl)
+            root(sl)
     else:
-        types()
+        root(sl)

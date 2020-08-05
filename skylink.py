@@ -185,12 +185,10 @@ class Skylink:
         self._data.clear()
         self._auth(device)
         
-    def _getTvapiToken(self):
+    def _getTvApiToken(self):
         res = self._get({'z': 'ssotoken'})
-        print res.content
         data = res.json()
-        res = self._post({},json.dumps({'appVersion':'83.0','brand':self._provider,'deviceModel':'Chrome','deviceSerial':self._data.uid,'deviceType':'PC','memberId':'0','osVersion':"Windows 10",'sapiToken':data['ssotoken']}).encode(), True, 'session')
-        print res.content
+        res = self._postTvApi({},json.dumps({'appVersion':'83.0','brand':self._provider,'deviceModel':'Chrome','deviceSerial':self._data.uid,'deviceType':'PC','memberId':'0','osVersion':"Windows 10",'sapiToken':data['ssotoken']}).encode(), 'session')
         data = res.json()
         self._data.token = data['token']
 
@@ -201,22 +199,35 @@ class Skylink:
     def _request(self, method, url, **kwargs):
         return self._session.request(method, url, **kwargs)
 
-    def _get(self, params, tvapi = False, req = '', authorization = False):
+    def _get(self, params):
+        headers={'User-Agent': UA, 'Referer': self._url, 'Origin': self._url,
+                 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin',
+                 'Accept': 'application/json, text/javascript, */*; q=0.01'}
+        return self._request('GET', self._api_url + 'capi.aspx', params=params, allow_redirects=True, headers=headers)
+
+    def _getTvApi(self, params, req, authorization = False):
         headers={'User-Agent': UA, 'Referer': self._url, 'Origin': self._url,
                  'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin',
                  'Accept': 'application/json, text/javascript, */*; q=0.01'}
         if authorization:
             headers['authorization'] = 'Bearer ' + self._data.token
-        return self._request('GET', TVAPI_URL + req if tvapi else self._api_url + 'capi.aspx', params=params, allow_redirects=True, headers=headers)
+        return self._request('GET', TVAPI_URL + req, params=params, allow_redirects=True, headers=headers)
 
-    def _post(self, params, data, tvapi = False, req = '', authorization = False):
+    def _post(self, params, data):
+        headers={'User-Agent': UA, 'Referer': self._url, 'Origin': self._url,
+                 'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin',
+                 'Accept': 'application/json, text/javascript, */*; q=0.01',
+                 'X-Requested-With': 'XMLHttpRequest'}
+        return self._request('POST', self._api_url + 'capi.aspx', params=params, data=data, json=None, headers=headers)
+
+    def _postTvApi(self, params, data, req, authorization = False):
         headers={'User-Agent': UA, 'Referer': self._url, 'Origin': self._url,
                  'Sec-Fetch-Mode': 'cors', 'Sec-Fetch-Site': 'same-origin',
                  'Accept': 'application/json, text/javascript, */*; q=0.01',
                  'X-Requested-With': 'XMLHttpRequest'}
         if authorization:
             headers['authorization'] = 'Bearer ' + self._data.token
-        return self._request('POST', TVAPI_URL + req if tvapi else self._api_url + 'capi.aspx', params=params, data=data, json=None, headers=headers)
+        return self._request('POST', TVAPI_URL + req, params=params, data=data, json=None, headers=headers)
 
     def channels(self, replay=False):
         """Returns available live channels, when reply is set returns replayable channels as well
@@ -440,8 +451,8 @@ class Skylink:
         data = res.json()
         return data
 
-    def newLibTest(self):
+    def library_genres(self):
         self._login()
-        self._getTvapiToken()
-        res = self._get({'group':'genre','sort':'newest'}, True, 'collections/movies', True)
+        self._getTvApiToken()
+        res = self._getTvApi({'group':'genre','sort':'newest'}, 'collections/movies', True)
         print res.content
